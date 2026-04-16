@@ -7,7 +7,7 @@ import (
 	"net/rpc"
 	"os"
 	"strconv"
-	"strings"
+	//"strings"
 	"sync"
 	"time"
 )
@@ -24,7 +24,7 @@ var self_node shared.Node
 // Send the current membership table to a neighboring node with the provided ID
 func sendMessage(server rpc.Client, id int, membership shared.Membership) {
 	//TODO
-  return nil
+  return
 }
 
 // Read incoming messages from other nodes
@@ -34,8 +34,7 @@ func readMessages(server rpc.Client, id int, membership shared.Membership) *shar
 }
 
 func calcTime() float64 {
-	//TODO
-  return nil
+  return 0
 }
 
 var wg = &sync.WaitGroup{}
@@ -93,17 +92,21 @@ func main() {
 
 func runAfterX(server *rpc.Client, node *shared.Node, membership **shared.Membership, id int) {
 	//TODO
-  return nil
+  // Incremement (still alive)
+  node.Hbcounter++
+  fmt.Printf("Node %d has HB: %d\n", node.ID, node.Hbcounter)
+  // Schedule the next HB increment for the next X duration
+  time.AfterFunc(time.Second*X_TIME, func() { runAfterX(server, node, membership, id) })
 }
 
 func runAfterY(server *rpc.Client, neighbors [2]int, membership **shared.Membership, id int) {
 	//TODO
-  return nil
+  return
 }
 
 func runAfterZ(server *rpc.Client, id int) {
 	//TODO
-  return nil
+  return
 }
 
 

@@ -91,7 +91,7 @@ type Requests struct {
 // Returns a new instance of a Membership (pointer).
 func NewRequests() *Requests {
 	//TODO
-  return nil
+  return nil  
 }
 
 // Adds a new message request to the pending list
@@ -103,9 +103,11 @@ func (req *Requests) Add(payload Request, reply *bool) error {
 // Listens to communication from neighboring nodes.
 func (req *Requests) Listen(ID int, reply *Membership) error {
 	//TODO
+  return nil
 }
 
 func combineTables(table1 *Membership, table2 *Membership) *Membership {
 	//TODO
+  return nil
 }
 
