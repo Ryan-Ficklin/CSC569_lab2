@@ -60,18 +60,21 @@ func NewMembership() *Membership {
 // Adds a node to the membership list.
 func (m *Membership) Add(payload Node, reply *Node) error {
 	//TODO
+  m.Members[payload.ID] = payload
   return nil
 }
 
 // Updates a node in the membership list.
 func (m *Membership) Update(payload Node, reply *Node) error {
 	//TODO
+  m.Members[payload.ID] = payload
   return nil
 }
 
 // Returns a node with specific ID.
 func (m *Membership) Get(payload int, reply *Node) error {
 	//TODO
+  reply = m.Members[payload]
   return nil
 }
 
