@@ -10,11 +10,11 @@ import (
 func main() {
 	// create a Membership list
 	nodes := shared.NewMembership()
-	//requests := shared.NewRequests()
+	requests := shared.NewRequests()
 
 	// register nodes with `rpc.DefaultServer`
 	rpc.Register(nodes)
-	//rpc.Register(requests)
+	rpc.Register(requests)
 
 	// register an HTTP handler for RPC communication
 	rpc.HandleHTTP()

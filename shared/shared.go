@@ -14,7 +14,7 @@ const (
 type Node struct {
 	ID        int
 	Hbcounter int
-	Time      float64
+	Time      time.Time
 	Alive     bool
 }
 
@@ -74,7 +74,7 @@ func (m *Membership) Update(payload Node, reply *Node) error {
 // Returns a node with specific ID.
 func (m *Membership) Get(payload int, reply *Node) error {
 	//TODO
-  reply = m.Members[payload]
+  *reply = m.Members[payload]
   return nil
 }
 
@@ -94,23 +94,51 @@ type Requests struct {
 // Returns a new instance of a Membership (pointer).
 func NewRequests() *Requests {
 	//TODO
-  return nil  
+  return &Requests{
+    Pending: make(map[int]Membership),
+  }
 }
 
 // Adds a new message request to the pending list
 func (req *Requests) Add(payload Request, reply *bool) error {
 	//TODO
+  req.Pending[payload.ID] = payload.Table
+  // reply..?
   return nil
 }
 
 // Listens to communication from neighboring nodes.
 func (req *Requests) Listen(ID int, reply *Membership) error {
 	//TODO
+  membership, ok := req.Pending[ID]
+
+  if ok{
+    *reply = membership
+    // now that the message has been received, remove it from the pending list
+    delete(req.Pending, ID)
+  }
   return nil
 }
 
-func combineTables(table1 *Membership, table2 *Membership) *Membership {
+func CombineTables(table1 *Membership, table2 *Membership) *Membership {
 	//TODO
-  return nil
+  combined := NewMembership()
+
+  // add all of table 1 to the combined list
+  for id, member := range table1.Members {
+    combined.Members[id] = member
+  }
+
+  // iterate through table2 and add or update members only when table2 is 
+  // more recent
+  for id, member := range table2.Members {
+    maybeMember, exists := combined.Members[id]
+
+    if !exists || member.Hbcounter > maybeMember.Hbcounter {
+      combined.Members[id] = member 
+    }
+  }
+  
+  return combined
 }
 
