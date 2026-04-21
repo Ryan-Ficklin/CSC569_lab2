@@ -123,7 +123,7 @@ func runAfterX(server *rpc.Client, node *shared.Node, membership **shared.Member
   // Incremement (still alive)
   node.Hbcounter++
   // update time after heartbeat
-  node.Time = calcTime()
+  //node.Time = calcTime()
 
   // local update (requires locking)
   
@@ -164,14 +164,6 @@ func runAfterY(server *rpc.Client, neighbors [2]int, membership **shared.Members
   // received requests
   (*membership) = shared.CombineTables(*membership, readMessages(server, id, **membership))
   
-  // check for dead nodes
-  for id, member := range (*membership).Members {
-    // let time 5T be the threshold for detecting a dead node 
-    if calcTime().Sub(member.Time) > 5*Y_TIME*time.Second {
-      member.Alive = false
-      (**membership).Members[id] = member
-    }
-  }
   self_mutex.Unlock()
 
   time.AfterFunc(time.Second*Y_TIME, func() { runAfterY(server, neighbors, membership, id) })

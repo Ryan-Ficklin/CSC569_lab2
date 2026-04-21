@@ -152,21 +152,23 @@ func CombineTables(table1 *Membership, table2 *Membership) *Membership {
   
   table1.mutex.Lock()
   defer table1.mutex.Unlock()
+  table2.mutex.Lock()
+  defer table2.mutex.Unlock()
   // add all of table 1 to the combined list
   for id, member := range table1.Members {
     combined.Members[id] = member
   }
 
-  table2.mutex.Lock()
-  defer table2.mutex.Unlock()
   // iterate through table2 and add or update members only when table2 is 
   // more recent
   for id, member := range table2.Members {
     maybeMember, exists := combined.Members[id]
-
     if !exists || member.Hbcounter > maybeMember.Hbcounter {
       member.Time = time.Now()
       combined.Members[id] = member 
+    } else if exists && member.Hbcounter == maybeMember.Hbcounter && (member.Time.Sub(maybeMember.Time).Abs() > 3*time.Second) { 
+      member.Alive = false
+      combined.Members[id] = member
     }
   }
   
