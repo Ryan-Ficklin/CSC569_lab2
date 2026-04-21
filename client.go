@@ -52,12 +52,8 @@ func readMessages(server *rpc.Client, id int, membership shared.Membership) *sha
     fmt.Println("Request read failed", err)
   }
   
-  // received requests
-  if len(incoming.Members) > 0 {
-    membership = *shared.CombineTables(&membership, incoming)
-  }
-
-  return &membership
+  //return &membership
+  return incoming
 }
 
 func calcTime() time.Time {
@@ -130,17 +126,20 @@ func runAfterX(server *rpc.Client, node *shared.Node, membership **shared.Member
   node.Time = calcTime()
 
   // local update (requires locking)
+  
   self_mutex.Lock()
   (**membership).Update(*node, node) 
   printMembership(**membership)
   self_mutex.Unlock()
   
+
   // update node in membership list
+ /* 
   var reply shared.Node
   err := server.Call("Membership.Update", *node, &reply)
   if err != nil {
     fmt.Println("Error updating hb", err);
-  }
+  }*/
 
   // Schedule the next HB increment for the next X duration
   time.AfterFunc(time.Second*X_TIME, func() { runAfterX(server, node, membership, id) })
@@ -153,9 +152,17 @@ func runAfterY(server *rpc.Client, neighbors [2]int, membership **shared.Members
     return 
   }
 
-  // look for messages sent from neighbors
   self_mutex.Lock()
-  (*membership) = readMessages(server, id, **membership)
+  // send my table to my neighbors
+  for _, neighbor := range neighbors {
+    sendMessage(server, neighbor, **membership)
+  }
+  self_mutex.Unlock()
+  
+  // look for messages sent from neighbors
+  self_mutex.Lock() 
+  // received requests
+  (*membership) = shared.CombineTables(*membership, readMessages(server, id, **membership))
   
   // check for dead nodes
   for id, member := range (*membership).Members {
@@ -164,13 +171,6 @@ func runAfterY(server *rpc.Client, neighbors [2]int, membership **shared.Members
       member.Alive = false
       (**membership).Members[id] = member
     }
-  }
-  self_mutex.Unlock()
-
-  self_mutex.Lock()
-  // send my table to my neighbors
-  for _, neighbor := range neighbors {
-    sendMessage(server, neighbor, **membership)
   }
   self_mutex.Unlock()
 
