@@ -19,14 +19,6 @@ type Node struct {
 	Alive     bool
 }
 
-// Generate random crash time from 10-60 seconds
-func (n Node) CrashTime() int {
-	rand.Seed(time.Now().UnixNano())
-	max := 60
-	min := 10
-	return rand.Intn(max-min) + min
-}
-
 func (n Node) InitializeNeighbors(id int) [2]int {
 	neighbor1 := RandInt()
 	for neighbor1 == id {
@@ -117,13 +109,7 @@ func (req *Requests) Add(payload Request, reply *bool) error {
   req.mutex.Lock()
   defer req.mutex.Unlock()
   
-  existing, exists := req.Pending[payload.ID]
-  if exists {
-    req.Pending[payload.ID] = *CombineTables(&existing, &payload.Table)
-  } else {
-    // no request exists already
-    req.Pending[payload.ID] = payload.Table
-  }
+  req.Pending[payload.ID] = payload.Table
 
   *reply = true
   return nil
@@ -150,10 +136,13 @@ func CombineTables(table1 *Membership, table2 *Membership) *Membership {
 
   combined := NewMembership()
   
+  // lock these tables s.t. we can read from them without updates occuring
+  // mid-read
   table1.mutex.Lock()
   defer table1.mutex.Unlock()
   table2.mutex.Lock()
   defer table2.mutex.Unlock()
+  
   // add all of table 1 to the combined list
   for id, member := range table1.Members {
     combined.Members[id] = member
@@ -161,12 +150,23 @@ func CombineTables(table1 *Membership, table2 *Membership) *Membership {
 
   // iterate through table2 and add or update members only when table2 is 
   // more recent
+  timeout := 3*time.Second
   for id, member := range table2.Members {
     maybeMember, exists := combined.Members[id]
+    // add/update with table2's member if there isnt a corresponding node in
+    // table1 or if table2 has a larger heartbeat
     if !exists || member.Hbcounter > maybeMember.Hbcounter {
       member.Time = time.Now()
-      combined.Members[id] = member 
-    } else if exists && member.Hbcounter == maybeMember.Hbcounter && (member.Time.Sub(maybeMember.Time).Abs() > 3*time.Second) { 
+      combined.Members[id] = member
+    // finding dead nodes:
+    // 1) member exists in both
+    // 2) Heartbeat has not been updated
+    // 3) time since the member has been updated in both tables is longer than 
+    //    some tuned arbitrary timeout (I chose 3 seconds after some testing)
+    } else if exists && 
+              member.Hbcounter == maybeMember.Hbcounter && 
+              (time.Since(maybeMember.Time) > timeout && time.Since(member.Time) > timeout) {
+              //(member.Time.Sub(maybeMember.Time).Abs() > 3*time.Second) { 
       member.Alive = false
       combined.Members[id] = member
     }

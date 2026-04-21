@@ -24,21 +24,21 @@ sleep 0.5
 service="$(qdbus | grep -B1 konsole | grep -v -- -- | sort -t"." -k2 -n | tail -n 1)"
 
 qdbus $service /Sessions/1 org.kde.konsole.Session.runCommand "${server}"
-sleep 0.1
+sleep 0.3
 qdbus $service /Sessions/2 org.kde.konsole.Session.runCommand "${client1}"
-sleep 0.1
+sleep 0.3
 qdbus $service /Sessions/3 org.kde.konsole.Session.runCommand "${client2}"
-sleep 0.1
+sleep 0.3
 qdbus $service /Sessions/4 org.kde.konsole.Session.runCommand "${client3}"
-sleep 0.1
+sleep 0.3
 qdbus $service /Sessions/5 org.kde.konsole.Session.runCommand "${client4}"
-sleep 0.1
+sleep 0.3
 qdbus $service /Sessions/6 org.kde.konsole.Session.runCommand "${client5}"
-sleep 0.1
+sleep 0.3
 qdbus $service /Sessions/7 org.kde.konsole.Session.runCommand "${client6}"
-sleep 0.1
+sleep 0.3
 qdbus $service /Sessions/8 org.kde.konsole.Session.runCommand "${client7}"
-sleep 0.1
+sleep 0.3
 qdbus $service /Sessions/9 org.kde.konsole.Session.runCommand "${client8}"
 
 # Renames the tabs - optional

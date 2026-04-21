@@ -103,8 +103,6 @@ func main() {
 
 	sendMessage(server, neighbors[0], *membership)
 
-	// crashTime := self_node.CrashTime()
-
 	time.AfterFunc(time.Second*X_TIME, func() { runAfterX(server, &self_node, &membership, id) })
 	time.AfterFunc(time.Second*Y_TIME, func() { runAfterY(server, neighbors, &membership, id) })
 	time.AfterFunc(time.Second*time.Duration(Z_TIME), func() { runAfterZ(server, id) })
@@ -123,24 +121,15 @@ func runAfterX(server *rpc.Client, node *shared.Node, membership **shared.Member
   // Incremement (still alive)
   node.Hbcounter++
   // update time after heartbeat
+  // I believe the algorithm only updates once the tables are combined 
   //node.Time = calcTime()
 
-  // local update (requires locking)
-  
+  // local update (requires locking) 
   self_mutex.Lock()
   (**membership).Update(*node, node) 
   printMembership(**membership)
   self_mutex.Unlock()
   
-
-  // update node in membership list
- /* 
-  var reply shared.Node
-  err := server.Call("Membership.Update", *node, &reply)
-  if err != nil {
-    fmt.Println("Error updating hb", err);
-  }*/
-
   // Schedule the next HB increment for the next X duration
   time.AfterFunc(time.Second*X_TIME, func() { runAfterX(server, node, membership, id) })
 }
@@ -162,10 +151,10 @@ func runAfterY(server *rpc.Client, neighbors [2]int, membership **shared.Members
   // look for messages sent from neighbors
   self_mutex.Lock() 
   // received requests
-  (*membership) = shared.CombineTables(*membership, readMessages(server, id, **membership))
-  
+  (*membership) = shared.CombineTables(*membership, readMessages(server, id, **membership))  
   self_mutex.Unlock()
-
+  
+  // schedule the next gossip
   time.AfterFunc(time.Second*Y_TIME, func() { runAfterY(server, neighbors, membership, id) })
 }
 
@@ -176,8 +165,6 @@ func runAfterZ(server *rpc.Client, id int) {
   wg.Done() 
   return
 }
-
-
 
 func printMembership(m shared.Membership){
 	for _, val := range m.Members {
