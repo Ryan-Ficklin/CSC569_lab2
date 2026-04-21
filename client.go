@@ -19,10 +19,13 @@ const (
 	Z_TIME_MAX = 100
 	Z_TIME_MIN = 10
 )
-var self_node shared.Node
+var (
+  self_node shared.Node
+  self_mutex sync.Mutex
+)
 
 // Send the current membership table to a neighboring node with the provided ID
-func sendMessage(server rpc.Client, id int, membership shared.Membership) {
+func sendMessage(server *rpc.Client, id int, membership shared.Membership) {
 	//TODO
   req := shared.Request{
     ID: id,
@@ -39,7 +42,7 @@ func sendMessage(server rpc.Client, id int, membership shared.Membership) {
 }
 
 // Read incoming messages from other nodes
-func readMessages(server rpc.Client, id int, membership shared.Membership) *shared.Membership {
+func readMessages(server *rpc.Client, id int, membership shared.Membership) *shared.Membership {
 	//TODO
   incoming := shared.NewMembership()
   
@@ -102,7 +105,7 @@ func main() {
 	membership := shared.NewMembership()
 	membership.Add(self_node, &self_node)
 
-	sendMessage(*server, neighbors[0], *membership)
+	sendMessage(server, neighbors[0], *membership)
 
 	// crashTime := self_node.CrashTime()
 
@@ -126,10 +129,11 @@ func runAfterX(server *rpc.Client, node *shared.Node, membership **shared.Member
   // update time after heartbeat
   node.Time = calcTime()
 
-  // local update  
-  (*membership).Update(*node, node)
-  
+  // local update (requires locking)
+  self_mutex.Lock()
+  (**membership).Update(*node, node) 
   printMembership(**membership)
+  self_mutex.Unlock()
   
   // update node in membership list
   var reply shared.Node
@@ -150,21 +154,25 @@ func runAfterY(server *rpc.Client, neighbors [2]int, membership **shared.Members
   }
 
   // look for messages sent from neighbors
-  *membership = readMessages(*server, id, **membership)
+  self_mutex.Lock()
+  (*membership) = readMessages(server, id, **membership)
   
   // check for dead nodes
-  for id, member := range (**membership).Members {
-    // let time T = 5 be the threshold for detecting a dead node 
-    if calcTime().Sub(member.Time) > 5*time.Second {
+  for id, member := range (*membership).Members {
+    // let time 5T be the threshold for detecting a dead node 
+    if calcTime().Sub(member.Time) > 5*Y_TIME*time.Second {
       member.Alive = false
       (**membership).Members[id] = member
     }
   }
+  self_mutex.Unlock()
 
+  self_mutex.Lock()
   // send my table to my neighbors
   for _, neighbor := range neighbors {
-    sendMessage(*server, neighbor, **membership)
+    sendMessage(server, neighbor, **membership)
   }
+  self_mutex.Unlock()
 
   time.AfterFunc(time.Second*Y_TIME, func() { runAfterY(server, neighbors, membership, id) })
 }

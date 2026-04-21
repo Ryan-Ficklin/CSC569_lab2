@@ -4,6 +4,7 @@ import (
 	//"fmt"
 	"math/rand"
 	"time"
+  "sync"
 )
 
 const (
@@ -47,7 +48,8 @@ func RandInt() int {
 
 // Membership struct represents participanting nodes
 type Membership struct {
-	Members map[int]Node
+	mutex sync.RWMutex
+  Members map[int]Node
 }
 
 // Returns a new instance of a Membership (pointer).
@@ -60,6 +62,9 @@ func NewMembership() *Membership {
 // Adds a node to the membership list.
 func (m *Membership) Add(payload Node, reply *Node) error {
 	//TODO
+  m.mutex.Lock()
+  defer m.mutex.Unlock()
+  
   m.Members[payload.ID] = payload
   return nil
 }
@@ -67,13 +72,19 @@ func (m *Membership) Add(payload Node, reply *Node) error {
 // Updates a node in the membership list.
 func (m *Membership) Update(payload Node, reply *Node) error {
 	//TODO
-  m.Members[payload.ID] = payload
-  return nil
+  m.mutex.Lock()
+  defer m.mutex.Unlock()
+ 
+ m.Members[payload.ID] = payload
+ return nil
 }
 
 // Returns a node with specific ID.
 func (m *Membership) Get(payload int, reply *Node) error {
 	//TODO
+  m.mutex.Lock()
+  defer m.mutex.Unlock()
+  
   *reply = m.Members[payload]
   return nil
 }
@@ -88,7 +99,8 @@ type Request struct {
 
 // Requests struct represents pending message requests
 type Requests struct {
-	Pending map[int]Membership
+	mutex sync.RWMutex
+  Pending map[int]Membership
 }
 
 // Returns a new instance of a Membership (pointer).
@@ -102,14 +114,27 @@ func NewRequests() *Requests {
 // Adds a new message request to the pending list
 func (req *Requests) Add(payload Request, reply *bool) error {
 	//TODO
-  req.Pending[payload.ID] = payload.Table
-  // reply..?
+  req.mutex.Lock()
+  defer req.mutex.Unlock()
+  
+  existing, exists := req.Pending[payload.ID]
+  if exists {
+    req.Pending[payload.ID] = *CombineTables(&existing, &payload.Table)
+  } else {
+    // no request exists already
+    req.Pending[payload.ID] = payload.Table
+  }
+
+  *reply = true
   return nil
 }
 
 // Listens to communication from neighboring nodes.
 func (req *Requests) Listen(ID int, reply *Membership) error {
 	//TODO
+  req.mutex.Lock()
+  defer req.mutex.Unlock()
+
   membership, ok := req.Pending[ID]
 
   if ok{
@@ -122,19 +147,25 @@ func (req *Requests) Listen(ID int, reply *Membership) error {
 
 func CombineTables(table1 *Membership, table2 *Membership) *Membership {
 	//TODO
-  combined := NewMembership()
 
+  combined := NewMembership()
+  
+  table1.mutex.Lock()
+  defer table1.mutex.Unlock()
   // add all of table 1 to the combined list
   for id, member := range table1.Members {
     combined.Members[id] = member
   }
 
+  table2.mutex.Lock()
+  defer table2.mutex.Unlock()
   // iterate through table2 and add or update members only when table2 is 
   // more recent
   for id, member := range table2.Members {
     maybeMember, exists := combined.Members[id]
 
     if !exists || member.Hbcounter > maybeMember.Hbcounter {
+      member.Time = time.Now()
       combined.Members[id] = member 
     }
   }
